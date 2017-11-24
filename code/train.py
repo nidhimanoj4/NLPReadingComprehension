@@ -70,47 +70,47 @@ tf.app.flags.DEFINE_boolean("quadratic_form", False, "Whether to convert coatten
 FLAGS = tf.app.flags.FLAGS
 
 
-def initialize_model(session, model, train_dir):
-    ckpt = tf.train.get_checkpoint_state(train_dir)
-    print("CKPT")
-    print(ckpt)
-    v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
-    if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(v2_path)):
-        print(ckpt.model_checkpoint_path)
-        logging.info("Reading model parameters from %s" % ckpt.model_checkpoint_path)
-        model.saver.restore(session, ckpt.model_checkpoint_path)
-    else:
-        logging.info("Created model with fresh parameters.")
-        session.run(tf.global_variables_initializer())
-        logging.info('Num params: %d' % sum(v.get_shape().num_elements() for v in tf.trainable_variables()))
-    return model
+# def initialize_model(session, model, train_dir):
+#     ckpt = tf.train.get_checkpoint_state(train_dir)
+#     print("CKPT")
+#     print(ckpt)
+#     v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
+#     if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(v2_path)):
+#         print(ckpt.model_checkpoint_path)
+#         logging.info("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+#         model.saver.restore(session, ckpt.model_checkpoint_path)
+#     else:
+#         logging.info("Created model with fresh parameters.")
+#         session.run(tf.global_variables_initializer())
+#         logging.info('Num params: %d' % sum(v.get_shape().num_elements() for v in tf.trainable_variables()))
+#     return model
 
 
-def initialize_vocab(vocab_path):
-    if tf.gfile.Exists(vocab_path):
-        rev_vocab = []
-        with tf.gfile.GFile(vocab_path, mode="rb") as f:
-            rev_vocab.extend(f.readlines())
-        rev_vocab = [line.strip('\n') for line in rev_vocab]
-        vocab = dict([(x, y) for (y, x) in enumerate(rev_vocab)])
-        return vocab, rev_vocab
-    else:
-        raise ValueError("Vocabulary file %s not found.", vocab_path)
+# def initialize_vocab(vocab_path):
+#     if tf.gfile.Exists(vocab_path):
+#         rev_vocab = []
+#         with tf.gfile.GFile(vocab_path, mode="rb") as f:
+#             rev_vocab.extend(f.readlines())
+#         rev_vocab = [line.strip('\n') for line in rev_vocab]
+#         vocab = dict([(x, y) for (y, x) in enumerate(rev_vocab)])
+#         return vocab, rev_vocab
+#     else:
+#         raise ValueError("Vocabulary file %s not found.", vocab_path)
 
 
-def get_normalized_train_dir(train_dir):
-    """
-    Adds symlink to {train_dir} from /tmp/cs224n-squad-train to canonicalize the
-    file paths saved in the checkpoint. This allows the model to be reloaded even
-    if the location of the checkpoint files has moved, allowing usage with CodaLab.
-    This must be done on both train.py and qa_answer.py in order to work.
-    """
-    global_train_dir = '/tmp/cs224n-squad-train'
-    os.unlink(global_train_dir)
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
-    os.symlink(os.path.abspath(train_dir), global_train_dir)
-    return global_train_dir
+# def get_normalized_train_dir(train_dir):
+#     """
+#     Adds symlink to {train_dir} from /tmp/cs224n-squad-train to canonicalize the
+#     file paths saved in the checkpoint. This allows the model to be reloaded even
+#     if the location of the checkpoint files has moved, allowing usage with CodaLab.
+#     This must be done on both train.py and qa_answer.py in order to work.
+#     """
+#     global_train_dir = '/tmp/cs224n-squad-train'
+#     os.unlink(global_train_dir)
+#     if not os.path.exists(train_dir):
+#         os.makedirs(train_dir)
+#     os.symlink(os.path.abspath(train_dir), global_train_dir)
+#     return global_train_dir
 
 
 #NOTE: Added below to process data
@@ -147,6 +147,7 @@ def load_datasets():
     ids_context_file = os.path.join(abs_dataset_dir, "val.ids.context")
     ids_question_file = os.path.join(abs_dataset_dir, "val.ids.question")
     span_answer_file = os.path.join(abs_dataset_dir, "val.span")
+    vocab_file = os.path.join(abs_dataset_dir, "vocab.dat")
 
     # NOTE: Get data by loading in the files we just made using load_token_file
     # For context and question, we assume each item in the list is a string
@@ -155,9 +156,10 @@ def load_datasets():
     # Since this isn't in qa_answer.py, we assume each item in the list to be a tuple
     # The first place in the tuple is the starting index relative to the passage
     # NOTE: it's possible for both values to be the same
-    valid_context_data = load_token_file(ids_context_file)
-    valid_question_data = load_token_file(ids_question_file)
-    valid_answer_data = load_span_file(span_answer_file)
+    valid_context_data = load_token_file(context_file)
+    valid_question_data = load_token_file(question_file)
+    valid_answer_data = load_token_file(answer_file)
+    vocab_token_data = load_token_file(vocab_file)
 
     if (len(valid_context_data) != len(valid_question_data) or len(valid_context_data) != len(valid_answer_data)):
         print('Error: the number of paragraphs, questions, and answers do not match')
@@ -205,7 +207,7 @@ def load_datasets():
     new_val_dataset = (new_val_context_data, new_val_question_data, new_val_answer_data)
     new_test_dataset = (new_test_context_data, new_test_question_data, new_test_answer_data)
     new_train_dataset = (new_train_context_data, new_train_question_data, new_train_answer_data)
-    return (new_val_dataset, new_test_dataset, new_train_dataset)
+    return (new_val_dataset, new_test_dataset, new_train_dataset, vocab_token_data)
 
 #def printAvgParagraphLength(valid_context_data):
 #    number_of_paragraphs_in_context = len(valid_context_data)
@@ -236,41 +238,85 @@ def printAvgLength(valid_data):
     avg_num_of_word_ids_in_phrases = (total_sum_of_word_ids_in_all_phrases * 1.0) / number_of_phrases
     return avg_num_of_word_ids_in_phrases
 
-def printAvgAnswerLength(valid_data):
-    number_of_answers = len(valid_data)
-    if number_of_answers == 0:
-        return 0
-    total_num_words_in_all_answers = 0
-    for start_index, end_index in valid_data:
-        length_of_answer = end_index - start_index + 1
-        total_num_words_in_all_answers += length_of_answer
-    avg_num_of_words_in_answers = (total_num_words_in_all_answers * 1.0) / number_of_answers
-    return avg_num_of_words_in_answers
+# def printAvgAnswerLength(valid_data):
+#     number_of_answers = len(valid_data)
+#     if number_of_answers == 0:
+#         return 0
+#     total_num_words_in_all_answers = 0
+#     for start_index, end_index in valid_data:
+#         length_of_answer = end_index - start_index + 1
+#         total_num_words_in_all_answers += length_of_answer
+#     avg_num_of_words_in_answers = (total_num_words_in_all_answers * 1.0) / number_of_answers
+#     return avg_num_of_words_in_answers
 
 def main(_):
-    val_dataset, test_dataset, train_dataset = load_datasets()
+    val_dataset, test_dataset, train_dataset, vocab = load_datasets()
 
     val_context_data, val_question_data, val_answer_data = val_dataset
     #avg_num_of_word_ids_in_paragraphs = printAvgParagraphLength(valid_context_data)
     val_avg_num_of_words_in_paragraphs = printAvgLength(val_context_data)
     val_avg_num_of_words_in_questions = printAvgLength(val_question_data)
-    val_avg_num_of_words_in_answers = printAvgAnswerLength(val_answer_data)
+    val_avg_num_of_words_in_answers = printAvgLength(val_answer_data)
     print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
     
     test_context_data, test_question_data, test_answer_data = test_dataset
     test_avg_num_of_words_in_paragraphs = printAvgLength(test_context_data)
     test_avg_num_of_words_in_questions = printAvgLength(test_question_data)
-    test_avg_num_of_words_in_answers = printAvgAnswerLength(test_answer_data)
+    test_avg_num_of_words_in_answers = printAvgLength(test_answer_data)
     print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
 
     train_context_data, train_question_data, train_answer_data = train_dataset
     train_avg_num_of_words_in_paragraphs = printAvgLength(train_context_data)
     train_avg_num_of_words_in_questions = printAvgLength(train_question_data)
-    train_avg_num_of_words_in_answers = printAvgAnswerLength(train_answer_data)
+    train_avg_num_of_words_in_answers = printAvgLength(train_answer_data)
     print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
     
     print('Hello')
 
+    file_train_context = open('data/squad/new_train_context_data', 'w')
+    for train_context in train_context_data:
+        file_train_context.write(train_context + '\n')
+    file_train_context.close()
+
+    file_train_question = open('data/squad/new_train_question_data', 'w')
+    for train_question in train_question_data:
+        file_train_question.write(train_question + '\n')
+    file_train_question.close()
+
+    file_train_answer = open('data/squad/new_train_answer_data', 'w')
+    for train_answer in train_answer_data:
+        file_train_answer.write(train_answer + '\n')
+    file_train_answer.close()
+
+    file_val_context = open('data/squad/new_val_context_data', 'w')
+    for val_context in val_context_data:
+        file_val_context.write(val_context + '\n')
+    file_val_context.close()
+
+    file_val_question = open('data/squad/new_val_question_data', 'w')
+    for val_question in val_question_data:
+        file_val_question.write(val_question + '\n')
+    file_val_question.close()
+
+    file_val_answer = open('data/squad/new_val_answer_data', 'w')
+    for val_answer in val_answer_data:
+        file_val_answer.write(val_answer + '\n')
+    file_val_answer.close()
+
+    file_test_context = open('data/squad/new_test_context_data', 'w')
+    for test_context in test_context_data:
+        file_test_context.write(test_context + '\n')
+    file_test_context.close()
+
+    file_test_question = open('data/squad/new_test_question_data', 'w')
+    for test_question in test_question_data:
+        file_test_question.write(test_question + '\n')
+    file_test_question.close()
+
+    file_test_answer = open('data/squad/new_test_answer_data', 'w')
+    for test_answer in test_answer_data:
+        file_test_answer.write(test_answer + '\n')
+    file_test_answer.close()
 
 #    embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
 #    vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")

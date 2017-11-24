@@ -80,16 +80,16 @@ def load_token_file(file_name):
         data.append(line.rstrip()) # Get rid of trailing newline
     return data
 
-def load_span_file(file_name):
-    data = []
-    file_contents = open(file_name, "rb")
-    for line in file_contents:
-        # Assumes space delimited
-        left_point, right_point = line.rstrip().split(" ")
-        # Convert to ints and add to list
-        data.append((int(left_point), int(right_point)))
-    return data
-    return True
+# def load_span_file(file_name):
+#     data = []
+#     file_contents = open(file_name, "rb")
+#     for line in file_contents:
+#         # Assumes space delimited
+#         left_point, right_point = line.rstrip().split(" ")
+#         # Convert to ints and add to list
+#         data.append((int(left_point), int(right_point)))
+#     return data
+#     return True
 
 def load_datasets():
     # Do what you need to load datasets from FLAGS.data_dir
@@ -98,12 +98,15 @@ def load_datasets():
     abs_dataset_dir = os.path.abspath(dataset_dir)
     # We will no longer use the train dataset, we are only going to be using the val dataset and splitting it up into our own test, train, and val datasets
     # NOTE: get all the files that we want to load
-    answer_file = os.path.join(abs_dataset_dir, "val.answer")
-    context_file = os.path.join(abs_dataset_dir, "val.context")
-    question_file = os.path.join(abs_dataset_dir, "val.question")
-    ids_context_file = os.path.join(abs_dataset_dir, "val.ids.context")
-    ids_question_file = os.path.join(abs_dataset_dir, "val.ids.question")
-    span_answer_file = os.path.join(abs_dataset_dir, "val.span")
+    train_answer_file = os.path.join(abs_dataset_dir, "new_train_answer_data")
+    train_context_file = os.path.join(abs_dataset_dir, "new_train_context_data")
+    train_question_file = os.path.join(abs_dataset_dir, "new_train_question_data")
+    test_answer_file = os.path.join(abs_dataset_dir, "new_test_answer_data")
+    test_context_file = os.path.join(abs_dataset_dir, "new_test_context_data")
+    test_question_file = os.path.join(abs_dataset_dir, "new_test_question_data")
+    val_answer_file = os.path.join(abs_dataset_dir, "new_val_answer_data")
+    val_context_file = os.path.join(abs_dataset_dir, "new_val_context_data")
+    val_question_file = os.path.join(abs_dataset_dir, "new_val_question_data")
     vocab_file = os.path.join(abs_dataset_dir, "vocab.dat")
     
     # NOTE: Get data by loading in the files we just made using load_token_file
@@ -113,58 +116,25 @@ def load_datasets():
     # Since this isn't in qa_answer.py, we assume each item in the list to be a tuple
     # The first place in the tuple is the starting index relative to the passage
     # NOTE: it's possible for both values to be the same
-    valid_context_data = load_token_file(context_file)
-    valid_question_data = load_token_file(question_file)
-    valid_answer_data = load_token_file(answer_file)
+    train_answer_data = load_token_file(train_answer_file)
+    train_context_data = load_token_file(train_context_file)
+    train_question_data = load_token_file(train_question_file)
+
+    test_answer_data = load_token_file(test_answer_file)
+    test_context_data = load_token_file(test_context_file)
+    test_question_data = load_token_file(test_question_file)
+
+    valid_answer_data = load_token_file(val_answer_file)
+    valid_context_data = load_token_file(val_context_file)
+    valid_question_data = load_token_file(val_question_file)
+    
     vocab_token_data = load_token_file(vocab_file)
 
-    if (len(valid_context_data) != len(valid_question_data) or len(valid_context_data) != len(valid_answer_data)):
-        print('Error: the number of paragraphs, questions, and answers do not match')
-          
-    # Make an array of indices 0 ... (len(valid_context_data) - 1)
-    indices_available = []
-    for index in range(0, len(valid_context_data)):
-        indices_available.append(index)
-    
-    new_val_context_data = []
-    new_val_question_data = []
-    new_val_answer_data = []
-
-    new_test_context_data = []
-    new_test_question_data = []
-    new_test_answer_data = []
-    
-    new_train_context_data = []
-    new_train_question_data = []
-    new_train_answer_data = []
-    
-    # Note: set up the new_val datasets for context, question, answer
-    for i in range(FLAGS.num_of_val_entries):
-        rand_index = indices_available[random.randrange(0,len(indices_available))]
-        new_val_context_data.append(valid_context_data[rand_index])
-        new_val_question_data.append(valid_question_data[rand_index])
-        new_val_answer_data.append(valid_answer_data[rand_index])
-        indices_available.remove(rand_index)
-    for i in range(FLAGS.num_of_test_entries):
-        rand_index = indices_available[random.randrange(0,len(indices_available))]
-        new_test_context_data.append(valid_context_data[rand_index])
-        new_test_question_data.append(valid_question_data[rand_index])
-        new_test_answer_data.append(valid_answer_data[rand_index])
-        indices_available.remove(rand_index)
-    for index in indices_available:
-        new_train_context_data.append(valid_context_data[index])
-        new_train_question_data.append(valid_question_data[index])
-        new_train_answer_data.append(valid_answer_data[index])
-
-    print('Length of val dataset = ', len(new_val_context_data))
-    print('Length of test dataset = ', len(new_test_context_data))
-    print('Length of train dataset = ', len(new_train_context_data))
-
     # Merge data
-    new_val_dataset = (new_val_context_data, new_val_question_data, new_val_answer_data)
-    new_test_dataset = (new_test_context_data, new_test_question_data, new_test_answer_data)
-    new_train_dataset = (new_train_context_data, new_train_question_data, new_train_answer_data)
-    return (new_val_dataset, new_test_dataset, new_train_dataset, vocab_token_data)
+    val_dataset = (valid_context_data, valid_question_data, valid_answer_data)
+    test_dataset = (test_context_data, test_question_data, test_answer_data)
+    train_dataset = (train_context_data, train_question_data, train_answer_data)
+    return (val_dataset, test_dataset, train_dataset, vocab_token_data)
 
 def sumVectorsOfSameDimension(vector1, scale, vector2):
     """
@@ -249,7 +219,7 @@ def evalFnIntersectionOverUnion(predicted_answer, correct_answer):
 
 def evalFnAverage(predicted_answer, correct_answer):
     sum_eval_metrics = evalFnOverNumWordsInCorrectAnswer(predicted_answer, correct_answer) + evalFnOverNumWordsInPredictedAnswer(predicted_answer, correct_answer) + evalFnIntersectionOverUnion(predicted_answer, correct_answer)
-    return sum_eval_metrics / .0
+    return sum_eval_metrics / 3.0
 
 #Baseline: To get the context with question and answer
 def baseline(train_dataset, vocab_token_data):
