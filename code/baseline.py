@@ -109,6 +109,10 @@ def load_datasets():
     val_question_file = os.path.join(abs_dataset_dir, "new_val_question_data")
     vocab_file = os.path.join(abs_dataset_dir, "vocab.dat")
     
+    demo_answer_file = os.path.join(abs_dataset_dir, "new_demo_answer_data")
+    demo_context_file = os.path.join(abs_dataset_dir, "new_demo_context_data")
+    demo_question_file = os.path.join(abs_dataset_dir, "new_demo_question_data")
+    
     # NOTE: Get data by loading in the files we just made using load_token_file
     # For context and question, we assume each item in the list is a string
     # The string is space seperated list of tokens that correspond to indices in the vocabulary
@@ -129,12 +133,19 @@ def load_datasets():
     valid_question_data = load_token_file(val_question_file)
     
     vocab_token_data = load_token_file(vocab_file)
+    
+    demo_answer_data = load_token_file(demo_answer_file)
+    demo_context_data = load_token_file(demo_context_file)
+    demo_question_data = load_token_file(demo_question_file)
 
     # Merge data
     val_dataset = (valid_context_data, valid_question_data, valid_answer_data)
     test_dataset = (test_context_data, test_question_data, test_answer_data)
     train_dataset = (train_context_data, train_question_data, train_answer_data)
-    return (val_dataset, test_dataset, train_dataset, vocab_token_data)
+    
+    demo_dataset = (demo_context_data, demo_question_data, demo_answer_data)
+    
+    return (val_dataset, test_dataset, train_dataset, vocab_token_data, demo_dataset)
 
 def sumVectorsOfSameDimension(vector1, scale, vector2):
     """
@@ -151,13 +162,14 @@ def sumVectorsOfSameDimension(vector1, scale, vector2):
     return vector1
 
 def getNumWordsCommonInPhrases(phrase1, phrase2):
-	# We want to return the number of words in phrase that are also in question (phrase1)
-	num_common_words = 0
-	words = phrase2.split(" ")
-	for word in words:
-		if word in phrase1:
-			num_common_words = num_common_words + 1
-	return num_common_words
+    # We want to return the number of words in phrase that are also in question (phrase1)
+    num_common_words = 0
+    words = phrase2.split(" ")
+    print(words)
+    for word in words:
+    	if word in phrase1:
+    		num_common_words = num_common_words + 1
+    return num_common_words
 
 #Converting a word into its indices form
 def convertWordToIndex(word, vocab_token_data):
@@ -249,16 +261,19 @@ def baseline(train_dataset, vocab_token_data):
         #The phrases within the paragraph
 #        print('passage = ', passage)
         phrases = re.split("\.|;|,|\(|\)|\?|\!|\:", passage)
-#        print('phrases = ', phrases, '\n')
+        print('phrases = ', phrases, '\n')
 
         # VERSION 1 (Baseline): Pick the phrase with the max number of common words to the question as the predicted answer
         for phrase in phrases:
             num_words_common_in_question = getNumWordsCommonInPhrases(question, phrase)
+            #print(num_words_common_in_question)
             if num_words_common_in_question > max_count:
+                print(num_words_common_in_question)
+                print(phrase)
                 max_count = num_words_common_in_question
                 max_phrase = phrase
 
-        # VERSION 2: Pick the phrase with the greatest cosine similarity in glove vectors for phrase and question
+        # VERSION 2: (GLoVE) Pick the phrase with the greatest cosine similarity in glove vectors for phrase and question
 #        for phrase in phrases:
 #            # gloveCosineSimilarityValue will be between [-1, 1]
 #            gloveCosineSimilarityValue = getGloveCosineSimilarityValue(question, phrase, glove_vector_data, vocab_token_data)
@@ -268,8 +283,9 @@ def baseline(train_dataset, vocab_token_data):
 
 		# Max phrase is now the predicted answer in baseline
         predicted_answer = max_phrase
-        # print('predicted_answer = ', predicted_answer)
-        # print('correct_answer = ', correct_answer)
+        print('question = \"', question, '\"')
+        print('predicted_answer = ', predicted_answer)
+#        print('correct_answer = ', correct_answer)
 
         evaluation_metric_over_correct_answer = evalFnOverNumWordsInCorrectAnswer(predicted_answer, correct_answer)
         list_of_evaluation_metrics_over_correct_answer.append(evaluation_metric_over_correct_answer)
@@ -284,16 +300,16 @@ def baseline(train_dataset, vocab_token_data):
         list_of_evaluation_metrics_avg.append(evaluation_metric_avg)
 
     avg_evaluation_metric_over_correct_answer = sum(list_of_evaluation_metrics_over_correct_answer) / (len(list_of_evaluation_metrics_over_correct_answer) * 1.0)
-    print ('avg_evaluation_metric_over_correct_answer = ', avg_evaluation_metric_over_correct_answer)
+    #print ('avg_evaluation_metric_over_correct_answer = ', avg_evaluation_metric_over_correct_answer)
 
     avg_evaluation_metric_over_predicted_answer = sum(list_of_evaluation_metrics_over_predicted_answer) / (len(list_of_evaluation_metrics_over_predicted_answer) * 1.0)
-    print ('avg_evaluation_metric_over_predicted_answer = ', avg_evaluation_metric_over_predicted_answer)
+    #print ('avg_evaluation_metric_over_predicted_answer = ', avg_evaluation_metric_over_predicted_answer)
 
     avg_evaluation_metric_intersection_over_union = sum(list_of_evaluation_metrics_intersection_over_union) / (len(list_of_evaluation_metrics_intersection_over_union) * 1.0)
-    print ('avg_evaluation_metric_intersection_over_union = ', avg_evaluation_metric_intersection_over_union)
+    #print ('avg_evaluation_metric_intersection_over_union = ', avg_evaluation_metric_intersection_over_union)
 
     avg_evaluation_metric_avg = sum(list_of_evaluation_metrics_avg) / (len(list_of_evaluation_metrics_avg) * 1.0)
-    print ('avg_evaluation_metric_avg = ', avg_evaluation_metric_avg)
+    #print ('avg_evaluation_metric_avg = ', avg_evaluation_metric_avg)
 
 def printAvgLength(valid_data):
     number_of_phrases = len(valid_data)
@@ -318,32 +334,36 @@ def printAvgLength(valid_data):
 
 def main(_):
     print ('Analyze the dataset: ')
-    val_dataset, test_dataset, train_dataset, vocab_token_data = load_datasets()
+    val_dataset, test_dataset, train_dataset, vocab_token_data, demo_dataset = load_datasets()
     
     val_context_data, val_question_data, val_answer_data = val_dataset
     #avg_num_of_word_ids_in_paragraphs = printAvgParagraphLength(valid_context_data)
     val_avg_num_of_words_in_paragraphs = printAvgLength(val_context_data)
     val_avg_num_of_words_in_questions = printAvgLength(val_question_data)
     val_avg_num_of_words_in_answers = printAvgLength(val_answer_data)
-    print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
+    #print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
     
     test_context_data, test_question_data, test_answer_data = test_dataset
     test_avg_num_of_words_in_paragraphs = printAvgLength(test_context_data)
     test_avg_num_of_words_in_questions = printAvgLength(test_question_data)
     test_avg_num_of_words_in_answers = printAvgLength(test_answer_data)
-    print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
+    #print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
     
     train_context_data, train_question_data, train_answer_data = train_dataset
     train_avg_num_of_words_in_paragraphs = printAvgLength(train_context_data)
     train_avg_num_of_words_in_questions = printAvgLength(train_question_data)
     train_avg_num_of_words_in_answers = printAvgLength(train_answer_data)
-    print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
+    #print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
     
-    print('\n', 'Baseline model and evaluation function on train dataset: ')
-    baseline(train_dataset, vocab_token_data)
+    #print('\n', 'Baseline model and evaluation function on train dataset: ')
+    #baseline(train_dataset, vocab_token_data)
 
-    print('\n', 'Baseline model and evaluation function on val dataset: ')
-    baseline(val_dataset, vocab_token_data)
+    #print('\n', 'Baseline model and evaluation function on val dataset: ')
+    #baseline(val_dataset, vocab_token_data)
+
+
+    baseline(demo_dataset, vocab_token_data)
+
 
 if __name__ == "__main__":
     tf.app.run()

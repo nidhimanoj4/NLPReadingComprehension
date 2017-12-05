@@ -198,7 +198,17 @@ def load_datasets():
         new_train_context_data.append(valid_context_data[index])
         new_train_question_data.append(valid_question_data[index])
         new_train_answer_data.append(valid_answer_data[index])
-              
+    
+    demo_user_inputted_passage = raw_input("Enter in a passage: ")
+    demo_user_inputted_question = raw_input("Enter in a question: ")
+    demo_user_inputted_answer = ""
+    
+    demo_context_data = [demo_user_inputted_passage]
+    demo_question_data = [demo_user_inputted_question]
+    demo_answer_data = [demo_user_inputted_answer]
+
+
+    
     print('Length of val dataset = ', len(new_val_context_data))
     print('Length of test dataset = ', len(new_test_context_data))
     print('Length of train dataset = ', len(new_train_context_data))
@@ -207,7 +217,10 @@ def load_datasets():
     new_val_dataset = (new_val_context_data, new_val_question_data, new_val_answer_data)
     new_test_dataset = (new_test_context_data, new_test_question_data, new_test_answer_data)
     new_train_dataset = (new_train_context_data, new_train_question_data, new_train_answer_data)
-    return (new_val_dataset, new_test_dataset, new_train_dataset, vocab_token_data)
+
+    demo_dataset = (demo_context_data, demo_question_data, demo_answer_data)
+
+    return (new_val_dataset, new_test_dataset, new_train_dataset, vocab_token_data, demo_dataset)
 
 #def printAvgParagraphLength(valid_context_data):
 #    number_of_paragraphs_in_context = len(valid_context_data)
@@ -250,28 +263,29 @@ def printAvgLength(valid_data):
 #     return avg_num_of_words_in_answers
 
 def main(_):
-    val_dataset, test_dataset, train_dataset, vocab = load_datasets()
+    val_dataset, test_dataset, train_dataset, vocab, demo_dataset = load_datasets()
 
     val_context_data, val_question_data, val_answer_data = val_dataset
     #avg_num_of_word_ids_in_paragraphs = printAvgParagraphLength(valid_context_data)
     val_avg_num_of_words_in_paragraphs = printAvgLength(val_context_data)
     val_avg_num_of_words_in_questions = printAvgLength(val_question_data)
     val_avg_num_of_words_in_answers = printAvgLength(val_answer_data)
-    print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
+    #print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
     
     test_context_data, test_question_data, test_answer_data = test_dataset
     test_avg_num_of_words_in_paragraphs = printAvgLength(test_context_data)
     test_avg_num_of_words_in_questions = printAvgLength(test_question_data)
     test_avg_num_of_words_in_answers = printAvgLength(test_answer_data)
-    print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
+    #print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
 
     train_context_data, train_question_data, train_answer_data = train_dataset
     train_avg_num_of_words_in_paragraphs = printAvgLength(train_context_data)
     train_avg_num_of_words_in_questions = printAvgLength(train_question_data)
     train_avg_num_of_words_in_answers = printAvgLength(train_answer_data)
-    print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
+    #print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
     
-    print('Hello')
+
+    demo_context_data, demo_question_data, demo_answer_data = demo_dataset
 
     file_train_context = open('data/squad/new_train_context_data', 'w')
     for train_context in train_context_data:
@@ -317,6 +331,22 @@ def main(_):
     for test_answer in test_answer_data:
         file_test_answer.write(test_answer + '\n')
     file_test_answer.close()
+
+
+    file_demo_context = open('data/squad/new_demo_context_data', 'w')
+    for demo_context in demo_context_data:
+        file_demo_context.write(demo_context + '\n')
+    file_demo_context.close()
+    
+    file_demo_question = open('data/squad/new_demo_question_data', 'w')
+    for demo_question in demo_question_data:
+        file_demo_question.write(demo_question + '\n')
+    file_demo_question.close()
+    
+    file_demo_answer = open('data/squad/new_demo_answer_data', 'w')
+    for demo_answer in demo_answer_data:
+        file_demo_answer.write(demo_answer + '\n')
+    file_demo_answer.close()
 
 #    embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
 #    vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
