@@ -165,10 +165,19 @@ def getNumWordsCommonInPhrases(phrase1, phrase2):
     # We want to return the number of words in phrase that are also in question (phrase1)
     num_common_words = 0
     words = phrase2.split(" ")
-    print(words)
+    question = re.split("\.|;|,|\(|\)|\?|\!|\:| ", phrase1)
+    lower_question = []
+    for a in question:
+        lower_question.append(a.lower())
+    keep_track = []
+    #print("the phrase: ", words)
+    #print("the question: ", question)
     for word in words:
-    	if word in phrase1:
-    		num_common_words = num_common_words + 1
+        low = word.lower()
+        if (low in lower_question) and (low not in keep_track) and (low != " "):
+            keep_track.append(low)
+            #print(low)
+            num_common_words = num_common_words + 1
     return num_common_words
 
 #Converting a word into its indices form
@@ -261,15 +270,14 @@ def baseline(train_dataset, vocab_token_data):
         #The phrases within the paragraph
 #        print('passage = ', passage)
         phrases = re.split("\.|;|,|\(|\)|\?|\!|\:", passage)
-        print('phrases = ', phrases, '\n')
 
         # VERSION 1 (Baseline): Pick the phrase with the max number of common words to the question as the predicted answer
         for phrase in phrases:
             num_words_common_in_question = getNumWordsCommonInPhrases(question, phrase)
             #print(num_words_common_in_question)
             if num_words_common_in_question > max_count:
-                print(num_words_common_in_question)
-                print(phrase)
+                #print(num_words_common_in_question)
+                #print("The phrase: ", phrase)
                 max_count = num_words_common_in_question
                 max_phrase = phrase
 
