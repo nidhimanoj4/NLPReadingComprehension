@@ -164,16 +164,23 @@ def sumVectorsOfSameDimension(vector1, scale, vector2):
 def getNumWordsCommonInPhrases(phrase1, phrase2):
     # We want to return the number of words in phrase that are also in question (phrase1)
     num_common_words = 0
+    #Split the phrase2 (the substring from passage) by spaces
     words = phrase2.split(" ")
+    #Split the question (phrase1) by punctuation and spaces to get individual words
     question = re.split("\.|;|,|\(|\)|\?|\!|\:| ", phrase1)
+    #Make the words in the question all lower case for case-insensitive
     lower_question = []
     for a in question:
         lower_question.append(a.lower())
+    #Keeps track of all the words that were already matched before
     keep_track = []
     #print("the phrase: ", words)
     #print("the question: ", question)
+    #Iterate through all the words in the phrase
     for word in words:
+        #Make the word lower case for case-insensitivity
         low = word.lower()
+        #If the the word is in the question, and it was not already matched before, and it isn't just a space, update the num counts
         if (low in lower_question) and (low not in keep_track) and (low != " "):
             keep_track.append(low)
             #print(low)
@@ -282,18 +289,19 @@ def baseline(train_dataset, vocab_token_data):
                 max_phrase = phrase
 
         # VERSION 2: (GLoVE) Pick the phrase with the greatest cosine similarity in glove vectors for phrase and question
-#        for phrase in phrases:
-#            # gloveCosineSimilarityValue will be between [-1, 1]
-#            gloveCosineSimilarityValue = getGloveCosineSimilarityValue(question, phrase, glove_vector_data, vocab_token_data)
-#            if gloveCosineSimilarityValue > max_count:
-#                max_count = gloveCosineSimilarityValue
-#                max_phrase = phrase
+        # for phrase in phrases:
+        #    # gloveCosineSimilarityValue will be between [-1, 1]
+        #    gloveCosineSimilarityValue = getGloveCosineSimilarityValue(question, phrase, glove_vector_data, vocab_token_data)
+        #    if gloveCosineSimilarityValue > max_count:
+        #        max_count = gloveCosineSimilarityValue
+        #        max_phrase = phrase
 
 		# Max phrase is now the predicted answer in baseline
         predicted_answer = max_phrase
+        print('passage = ', passage)
         print('question = \"', question, '\"')
         print('predicted_answer = ', predicted_answer)
-#        print('correct_answer = ', correct_answer)
+        print('correct_answer = ', correct_answer)
 
         evaluation_metric_over_correct_answer = evalFnOverNumWordsInCorrectAnswer(predicted_answer, correct_answer)
         list_of_evaluation_metrics_over_correct_answer.append(evaluation_metric_over_correct_answer)
@@ -364,13 +372,13 @@ def main(_):
     #print('train_avg_num_of_words_in_paragraphs = ', train_avg_num_of_words_in_paragraphs, '\n',     'train_avg_num_of_words_in_questions = ', train_avg_num_of_words_in_questions, '\n', 'train_avg_num_of_words_in_answers = ', train_avg_num_of_words_in_answers, '\n')
     
     #print('\n', 'Baseline model and evaluation function on train dataset: ')
-    #baseline(train_dataset, vocab_token_data)
+    baseline(train_dataset, vocab_token_data)
 
     #print('\n', 'Baseline model and evaluation function on val dataset: ')
     #baseline(val_dataset, vocab_token_data)
 
 
-    baseline(demo_dataset, vocab_token_data)
+    #baseline(demo_dataset, vocab_token_data)
 
 
 if __name__ == "__main__":

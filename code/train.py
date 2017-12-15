@@ -160,8 +160,9 @@ def load_datasets():
     valid_question_data = load_token_file(question_file)
     valid_answer_data = load_token_file(answer_file)
     vocab_token_data = load_token_file(vocab_file)
+    valid_span_answer_data = load_span_file(span_answer_file)
 
-    if (len(valid_context_data) != len(valid_question_data) or len(valid_context_data) != len(valid_answer_data)):
+    if (len(valid_context_data) != len(valid_question_data) or len(valid_context_data) != len(valid_answer_data)) or len(valid_span_answer_data) != len(valid_context_data):
         print('Error: the number of paragraphs, questions, and answers do not match')
           
     # Make an array of indices 0 ... (len(valid_context_data) - 1)
@@ -172,14 +173,17 @@ def load_datasets():
     new_val_context_data = []
     new_val_question_data = []
     new_val_answer_data = []
+    new_val_answer_span = []
 
     new_test_context_data = []
     new_test_question_data = []
     new_test_answer_data = []
+    new_test_answer_span = []
     
     new_train_context_data = []
     new_train_question_data = []
     new_train_answer_data = []
+    new_train_answer_span = []
     
     # Note: set up the new_val datasets for context, question, answer
     for i in range(FLAGS.num_of_val_entries):
@@ -187,17 +191,21 @@ def load_datasets():
         new_val_context_data.append(valid_context_data[rand_index])
         new_val_question_data.append(valid_question_data[rand_index])
         new_val_answer_data.append(valid_answer_data[rand_index])
+        new_val_answer_span.append(valid_span_answer_data[rand_index])
         indices_available.remove(rand_index)
     for i in range(FLAGS.num_of_test_entries):
         rand_index = indices_available[random.randrange(0,len(indices_available))]
         new_test_context_data.append(valid_context_data[rand_index])
         new_test_question_data.append(valid_question_data[rand_index])
         new_test_answer_data.append(valid_answer_data[rand_index])
+        new_test_answer_span.append(valid_span_answer_data[rand_index])
         indices_available.remove(rand_index)
     for index in indices_available:
         new_train_context_data.append(valid_context_data[index])
         new_train_question_data.append(valid_question_data[index])
         new_train_answer_data.append(valid_answer_data[index])
+        new_train_answer_span.append(valid_span_answer_data[index])
+
     
     demo_user_inputted_passage = raw_input("Enter in a passage: ")
     demo_user_inputted_question = raw_input("Enter in a question: ")
@@ -214,9 +222,9 @@ def load_datasets():
     print('Length of train dataset = ', len(new_train_context_data))
 
     # Merge data
-    new_val_dataset = (new_val_context_data, new_val_question_data, new_val_answer_data)
-    new_test_dataset = (new_test_context_data, new_test_question_data, new_test_answer_data)
-    new_train_dataset = (new_train_context_data, new_train_question_data, new_train_answer_data)
+    new_val_dataset = (new_val_context_data, new_val_question_data, new_val_answer_data, new_val_answer_span)
+    new_test_dataset = (new_test_context_data, new_test_question_data, new_test_answer_data, new_test_answer_span)
+    new_train_dataset = (new_train_context_data, new_train_question_data, new_train_answer_data, new_train_answer_span)
 
     demo_dataset = (demo_context_data, demo_question_data, demo_answer_data)
 
@@ -265,20 +273,20 @@ def printAvgLength(valid_data):
 def main(_):
     val_dataset, test_dataset, train_dataset, vocab, demo_dataset = load_datasets()
 
-    val_context_data, val_question_data, val_answer_data = val_dataset
+    val_context_data, val_question_data, val_answer_data, val_answer_span_data = val_dataset
     #avg_num_of_word_ids_in_paragraphs = printAvgParagraphLength(valid_context_data)
     val_avg_num_of_words_in_paragraphs = printAvgLength(val_context_data)
     val_avg_num_of_words_in_questions = printAvgLength(val_question_data)
     val_avg_num_of_words_in_answers = printAvgLength(val_answer_data)
     #print('val_avg_num_of_words_in_paragraphs = ', val_avg_num_of_words_in_paragraphs, '\n',     'val_avg_num_of_words_in_questions = ', val_avg_num_of_words_in_questions, '\n', 'val_avg_num_of_words_in_answers = ', val_avg_num_of_words_in_answers, '\n')
     
-    test_context_data, test_question_data, test_answer_data = test_dataset
+    test_context_data, test_question_data, test_answer_data, test_answer_span_data = test_dataset
     test_avg_num_of_words_in_paragraphs = printAvgLength(test_context_data)
     test_avg_num_of_words_in_questions = printAvgLength(test_question_data)
     test_avg_num_of_words_in_answers = printAvgLength(test_answer_data)
     #print('test_avg_num_of_words_in_paragraphs = ', test_avg_num_of_words_in_paragraphs, '\n',     'test_avg_num_of_words_in_questions = ', test_avg_num_of_words_in_questions, '\n', 'test_avg_num_of_words_in_answers = ', test_avg_num_of_words_in_answers, '\n')
 
-    train_context_data, train_question_data, train_answer_data = train_dataset
+    train_context_data, train_question_data, train_answer_data, train_answer_span_data = train_dataset
     train_avg_num_of_words_in_paragraphs = printAvgLength(train_context_data)
     train_avg_num_of_words_in_questions = printAvgLength(train_question_data)
     train_avg_num_of_words_in_answers = printAvgLength(train_answer_data)
@@ -302,6 +310,11 @@ def main(_):
         file_train_answer.write(train_answer + '\n')
     file_train_answer.close()
 
+    file_train_answer_span = open('data/squad/new_train_answer_span_data', 'w')
+    for left_point, right_point in train_answer_span_data:
+        file_train_answer_span.write(str(left_point) + " " + str(right_point) + '\n')
+    file_train_answer_span.close()
+
     file_val_context = open('data/squad/new_val_context_data', 'w')
     for val_context in val_context_data:
         file_val_context.write(val_context + '\n')
@@ -317,6 +330,11 @@ def main(_):
         file_val_answer.write(val_answer + '\n')
     file_val_answer.close()
 
+    file_val_answer_span = open('data/squad/new_val_answer_span_data', 'w')
+    for left_point, right_point in val_answer_span_data:
+        file_val_answer_span.write(str(left_point) + " " + str(right_point) + '\n')
+    file_val_answer_span.close()
+
     file_test_context = open('data/squad/new_test_context_data', 'w')
     for test_context in test_context_data:
         file_test_context.write(test_context + '\n')
@@ -331,6 +349,11 @@ def main(_):
     for test_answer in test_answer_data:
         file_test_answer.write(test_answer + '\n')
     file_test_answer.close()
+
+    file_test_answer_span = open('data/squad/new_test_answer_span_data', 'w')
+    for left_point, right_point in test_answer_span_data:
+        file_test_answer_span.write(str(left_point) + " " + str(right_point) + '\n')
+    file_test_answer_span.close()
 
 
     file_demo_context = open('data/squad/new_demo_context_data', 'w')
